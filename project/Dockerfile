@@ -1,23 +1,13 @@
-# pull official base image
-FROM python:3.12.4-alpine
+FROM python:3.12-slim
 
-# set work directory
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /usr/src/app
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# install dependencies
-RUN pip install --upgrade pip
-COPY ./requirements.txt /usr/src/app/requirements.txt
-RUN pip install -r requirements.txt
+COPY . .
 
-# copy entrypoint.sh
-COPY ./entrypoint.sh /usr/src/app/entrypoint.sh
-
-# copy project
-COPY . /usr/src/app/
-
-# run entrypoint.sh
 ENTRYPOINT ["/usr/src/app/entrypoint.sh"]

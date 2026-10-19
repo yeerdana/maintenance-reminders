@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ближайшие сроки</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #ddd; }
+    .overdue { color: #b00020; font-weight: 600; }
+    .bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
+  </style>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <div class="bar">
+    <h1>Ближайшие сроки</h1>
+    <a href="{% url 'admin:index' %}">Админка</a>
+  </div>
+  <form>
+    <label>Показать задачи со сроком в ближайшие
+      <select name="days" hx-get="{% url 'maintenance:upcoming' %}" hx-target="#table" hx-push-url="true">
+        {% for choice in days_choices %}
+          <option value="{{ choice }}"{% if choice == days %} selected{% endif %}>{{ choice }} дн.</option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
+  <div id="table">{% include "maintenance/_table.html" %}</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{% if tasks %}
+<table>
+  <thead>
+    <tr><th>Компания</th><th>Задача</th><th>Ответственный</th><th>Срок</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}{% include "maintenance/_row.html" %}{% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Нет задач со сроком в ближайшие {{ days }} дн.</p>
+{% endif %}

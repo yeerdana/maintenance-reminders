@@ -1,0 +1,9 @@
+<tr id="task-{{ task.pk }}">
+  <td>{{ task.company }}</td>
+  <td>{{ task.title }}</td>
+  <td>{{ task.responsible_email }}</td>
+  <td{% if task.is_overdue %} class="overdue"{% endif %}>{{ task.next_due|date:"d.m.Y" }} ({{ task.due_label }})</td>
+  <td>
+    <button hx-post="{% url 'maintenance:mark_done' task.pk %}" hx-target="#task-{{ task.pk }}" hx-swap="outerHTML">Выполнено</button>
+  </td>
+</tr>

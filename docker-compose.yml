@@ -1,38 +1,77 @@
+x-app: &app
+  build: ./project
+  environment: &app-env
+    SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-key-change-me}
+    DEBUG: ${DEBUG:-1}
+    POSTGRES_HOST: db
+    POSTGRES_DB: reminders
+    POSTGRES_USER: reminders
+    POSTGRES_PASSWORD: reminders
+    CELERY_BROKER_URL: redis://redis:6379/0
+    REMINDER_DAYS_AHEAD: ${REMINDER_DAYS_AHEAD:-3}
+    DIGEST_HOUR: ${DIGEST_HOUR:-9}
+    TIME_ZONE: ${TIME_ZONE:-Asia/Almaty}
+
 services:
-  web:
-    build: ./project
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ./project/:/usr/src/app/
-    ports:
-      - 1337:8000
+  db:
+    image: postgres:16-alpine
     environment:
-      - DEBUG=1
-      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
-    depends_on:
-      - redis
+      POSTGRES_DB: reminders
+      POSTGRES_USER: reminders
+      POSTGRES_PASSWORD: reminders
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reminders -d reminders"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  web:
+    <<: *app
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "1"
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-admin}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/admin/login/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
   celery:
-    build: ./project
+    <<: *app
     command: celery -A core worker -l info
-    volumes:
-      - ./project/:/usr/src/app/
-    environment:
-      - DEBUG=1
-      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
     depends_on:
-      - redis
-  celery-beat:
-    build: ./project
-    command: celery -A core beat -l info
-    volumes:
-      - ./project/:/usr/src/app/
-    environment:
-      - DEBUG=1
-      - SECRET_KEY=dbaa1_i7%*3r9-=z-+_mz4r-!qeed@(-a_r(g@k8jo8y3r27%m
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      web:
+        condition: service_healthy
+
+  beat:
+    <<: *app
+    # The schedule file lives in /tmp so no binary state ends up in the repository.
+    command: celery -A core beat -l info -s /tmp/celerybeat-schedule
     depends_on:
-      - redis
+      web:
+        condition: service_healthy
+
+volumes:
+  pgdata:
